@@ -1,0 +1,97 @@
+# Zetup - Zsh Configuration
+# =========================
+
+# Get the directory where this config is located
+ZETUP_DIR="$(dirname "$(dirname "$(readlink -f "${(%):-%N}")")")"
+[[ -z "$ZETUP_DIR" ]] && ZETUP_DIR="$HOME/.config/zetup"
+
+# Load Antigen
+source "$HOME/.antigen.zsh"
+
+# Load oh-my-zsh library
+antigen use oh-my-zsh
+
+# Core oh-my-zsh plugins
+antigen bundle git
+antigen bundle pip
+antigen bundle sdk
+antigen bundle lein
+antigen bundle command-not-found
+
+# Community plugins
+antigen bundle zsh-users/zsh-completions
+antigen bundle zsh-users/zsh-syntax-highlighting
+
+# Theme
+antigen theme robbyrussell
+
+# Apply antigen configuration
+antigen apply
+
+# History settings
+HISTFILE="$HOME/.zsh_history"
+HISTSIZE=10000000
+SAVEHIST=10000000
+
+setopt BANG_HIST
+setopt EXTENDED_HISTORY
+setopt INC_APPEND_HISTORY
+setopt SHARE_HISTORY
+setopt HIST_EXPIRE_DUPS_FIRST
+setopt HIST_IGNORE_DUPS
+setopt HIST_IGNORE_ALL_DUPS
+setopt HIST_FIND_NO_DUPS
+setopt HIST_IGNORE_SPACE
+setopt HIST_SAVE_NO_DUPS
+setopt HIST_REDUCE_BLANKS
+setopt HIST_VERIFY
+setopt HIST_BEEP
+
+# Additional zsh options
+setopt AUTO_CD
+setopt CORRECT
+setopt CORRECT_ALL
+setopt AUTO_LIST
+setopt AUTO_MENU
+setopt ALWAYS_TO_END
+setopt COMPLETE_IN_WORD
+
+# Load shared aliases
+[[ -f "$HOME/.config/zetup/aliases.zsh" ]] && source "$HOME/.config/zetup/aliases.zsh"
+
+# Load machine-specific configuration
+[[ -f "$HOME/.config/zetup/local.zsh" ]] && source "$HOME/.config/zetup/local.zsh"
+
+# Load any additional user customizations
+[[ -f "$HOME/.zshrc.local" ]] && source "$HOME/.zshrc.local"
+
+# Completion system
+autoload -Uz compinit
+compinit
+
+# Case-insensitive completion
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
+
+# Menu selection for completion
+zstyle ':completion:*' menu select
+
+# Colored completion
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+
+# Export environment variables
+export EDITOR="${EDITOR:-vim}"
+export PAGER="${PAGER:-less}"
+export LESS="-R"
+
+# Add local bin to PATH if it exists
+[[ -d "$HOME/.local/bin" ]] && export PATH="$HOME/.local/bin:$PATH"
+
+# macOS specific settings
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # Homebrew setup
+    if [[ -f "/opt/homebrew/bin/brew" ]]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+    elif [[ -f "/usr/local/bin/brew" ]]; then
+        eval "$(/usr/local/bin/brew shellenv)"
+    fi
+fi

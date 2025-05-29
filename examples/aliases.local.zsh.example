@@ -1,0 +1,42 @@
+# Zetup - Machine-Specific Aliases Example
+# ========================================
+# Copy this file to ~/.config/zetup/aliases.local.zsh and customize it for this machine
+
+# Machine-specific shortcuts
+alias myprojects="cd ~/Development/MyProjects"
+alias logs="cd /var/log"
+
+# Work-specific aliases
+# alias deploy="./scripts/deploy.sh"
+# alias staging="ssh user@staging-server"
+# alias production="ssh user@production-server"
+
+# Development environment shortcuts
+# alias startdev="docker-compose up -d && npm run dev"
+# alias stopdev="docker-compose down"
+# alias resetdev="docker-compose down -v && docker-compose up -d"
+
+# Database shortcuts
+# alias db="mysql -u root -p"
+# alias redis="redis-cli"
+# alias mongo="mongo"
+
+# Custom tools and scripts
+# alias backup="~/scripts/backup.sh"
+# alias sync="rsync -av --progress"
+
+# Machine-specific overrides of shared aliases
+# Override the default 'serve' alias for a specific port
+# alias serve="python3 -m http.server 3000"
+
+# Quick access to frequently used files
+# alias hosts="sudo vim /etc/hosts"
+# alias sshconfig="vim ~/.ssh/config"
+
+# Custom development workflows
+# alias newproject="~/scripts/create-project.sh"
+# alias cleanup="~/scripts/cleanup-dev.sh"
+
+# Machine-specific utilities
+# alias vpnstatus="ifconfig tun0"
+# alias diskusage="du -sh * | sort -hr"

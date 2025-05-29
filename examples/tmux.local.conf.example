@@ -1,0 +1,30 @@
+# Zetup - Machine-Specific Tmux Configuration Example
+# ===================================================
+# Copy this file to ~/.config/zetup/tmux.local.conf and customize it for this machine
+
+# Machine-specific key bindings
+# bind-key M-h previous-window
+# bind-key M-l next-window
+
+# Custom status bar for this machine
+# set -g status-right '#[fg=colour233,bg=colour241,bold] #{host_short} #[fg=colour233,bg=colour245,bold] %d/%m %H:%M:%S '
+
+# Development-specific settings
+# set-environment -g DEVELOPMENT_MODE 1
+
+# Custom pane layouts
+# bind-key D run-shell "tmux split-window -h -p 30 && tmux split-window -v"
+
+# Machine-specific plugins
+# set -g @plugin 'tmux-plugins/tmux-cpu'
+# set -g @plugin 'tmux-plugins/tmux-battery'
+
+# Work-specific session management
+# bind-key W new-session -d -s work -c "~/Development"
+
+# Custom theme overrides
+# set -g status-bg colour235
+# set -g status-fg colour136
+
+# Conditional configurations based on environment
+# if-shell "test -d ~/Development" "bind-key D new-window -c ~/Development"

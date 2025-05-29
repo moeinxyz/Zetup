@@ -1,0 +1,43 @@
+# Zetup - Machine-Specific Configuration Example
+# ==============================================
+# Copy this file to ~/.config/zetup/local.zsh and customize it for this machine
+
+# Machine-specific environment variables
+export MACHINE_NAME="my-macbook"
+export WORK_DIR="$HOME/Development"
+
+# Custom PATH additions
+# export PATH="$HOME/custom-tools:$PATH"
+
+# Development environment variables
+# export JAVA_HOME="/usr/local/opt/openjdk"
+# export ANDROID_HOME="$HOME/Library/Android/sdk"
+# export GOPATH="$HOME/go"
+
+# API keys and tokens (use a secure method in production)
+# export OPENAI_API_KEY="your-key-here"
+# export GITHUB_TOKEN="your-token-here"
+
+# Proxy settings (if needed)
+# export HTTP_PROXY="http://proxy.company.com:8080"
+# export HTTPS_PROXY="http://proxy.company.com:8080"
+# export NO_PROXY="localhost,127.0.0.1,.local"
+
+# Custom aliases for this machine
+alias work="cd $WORK_DIR"
+# alias vpn="sudo openvpn --config ~/vpn/company.ovpn"
+
+# Custom functions
+weather_local() {
+    curl "wttr.in/$(curl -s ipinfo.io/city)?format=3"
+}
+
+# Machine-specific zsh options
+# setopt AUTO_PUSHD
+# setopt PUSHD_IGNORE_DUPS
+
+# Custom prompt modifications (if not using oh-my-zsh theme)
+# PS1="%F{blue}[$MACHINE_NAME]%f $PS1"
+
+# Load additional machine-specific configurations
+# [[ -f "$HOME/.work_config" ]] && source "$HOME/.work_config"
