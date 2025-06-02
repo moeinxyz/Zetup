@@ -9,14 +9,23 @@ alias .....='cd ../../../..'
 alias ~='cd ~'
 alias -- -='cd -'
 
-# List files
-alias ll='ls -alF'
-alias la='ls -A'
-alias l='ls -CF'
-alias lt='ls -altr'
-alias lh='ls -lh'
+# List files with enhanced colors (macOS compatible)
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    alias ll='ls -alFG'
+    alias la='ls -AG'
+    alias l='ls -CFG'
+    alias lt='ls -altrG'
+    alias lh='ls -lhG'
+else
+    alias ll='ls -alF --color=auto'
+    alias la='ls -A --color=auto'
+    alias l='ls -CF --color=auto'
+    alias lt='ls -altr --color=auto'
+    alias lh='ls -lh --color=auto'
+fi
+alias tree='tree -C'
 
-# Git shortcuts
+# Git shortcuts with enhanced visuals
 alias g='git'
 alias ga='git add'
 alias gaa='git add .'
@@ -27,19 +36,21 @@ alias gcm='git commit -m'
 alias gca='git commit --amend'
 alias gco='git checkout'
 alias gcb='git checkout -b'
-alias gd='git diff'
-alias gdc='git diff --cached'
+alias gd='git diff --color-words'
+alias gdc='git diff --cached --color-words'
 alias gf='git fetch'
-alias gl='git log --oneline --graph --decorate'
-alias gll='git log --graph --pretty=format:"%C(yellow)%h%Creset -%C(red)%d%Creset %s %C(green)(%cr) %C(bold blue)<%an>%Creset" --abbrev-commit'
+alias gl='git log --oneline --graph --decorate --color=always'
+alias gll='git log --graph --pretty=format:"%C(bold red)%h%Creset -%C(bold yellow)%d%Creset %s %C(bold green)(%cr) %C(bold blue)<%an>%Creset" --abbrev-commit --color=always'
+alias glll='git log --graph --pretty=format:"%C(bold magenta)*%C(bold red)%h%Creset %C(bold cyan)> %s%Creset %C(bold yellow)| %d%Creset %C(bold green)@ %cr%Creset %C(bold blue)~ %an%Creset" --abbrev-commit --color=always'
 alias gp='git push'
 alias gpl='git pull'
 alias gr='git remote'
 alias grv='git remote -v'
-alias gs='git status'
+alias gs='git status --short --branch'
 alias gss='git status -s'
 alias gst='git stash'
 alias gstp='git stash pop'
+alias gtree='git log --graph --oneline --all --decorate --color=always'
 
 # Docker
 alias d='docker'
@@ -102,17 +113,16 @@ alias fgrep='fgrep --color=auto'
 alias egrep='egrep --color=auto'
 alias less='less -R'
 
-# macOS specific
+# macOS specific aliases
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    alias ls='ls -G'
     alias finder='open -a Finder'
     alias flushdns='sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder'
     alias showfiles='defaults write com.apple.finder AppleShowAllFiles YES; killall Finder /System/Library/CoreServices/Finder.app'
     alias hidefiles='defaults write com.apple.finder AppleShowAllFiles NO; killall Finder /System/Library/CoreServices/Finder.app'
     alias brewup='brew update && brew upgrade && brew cleanup'
     alias cask='brew install --cask'
-else
-    alias ls='ls --color=auto'
+    alias cpu='top -l 1 | grep "CPU usage"'
+    alias mem='vm_stat | perl -ne "/page size of (\d+)/ and $size=$1; /Pages\s+([^:]+)[^\d]+(\d+)/ and printf(\"%-16s % 16.2f Mi\n\", \"$1:\", $2 * $size / 1048576);"'
 fi
 
 # Development
@@ -154,8 +164,13 @@ alias clock='while sleep 1;do tput sc;tput cup 0 $(($(tput cols)-29));date;tput 
 alias timer='echo "Timer started. Stop with Ctrl-D." && date && time cat && date'
 alias stopwatch='date; read; date'
 
-# Fun
+# Fun and geeky commands
 alias matrix='LC_ALL=C tr -c "[:digit:]" " " < /dev/urandom | dd cbs=$COLUMNS conv=unblock | GREP_COLOR="1;32" grep --color "[^ ]"'
+alias neo='echo -e "\033[32m"; while :; do echo $RANDOM | md5sum | cut -c 1-32 | tr "[0-9]" " " | sed "s/[a-f]/█/g"; sleep 0.1; done'
+alias hacker='echo -e "\033[92m"; for i in {1..1000}; do echo -n "$(shuf -n1 -e 0 1)"; sleep 0.01; done; echo'
+alias rainbow='yes "$(seq 231 -1 16)" | while read i; do printf "\x1b[48;5;${i}m\n"; sleep .02; done'
+alias starwars='telnet towel.blinkenlights.nl'
+alias pipes='pipes.sh -t 2'
 
 # Load local machine-specific aliases
 [[ -f "$HOME/.config/zetup/aliases.local.zsh" ]] && source "$HOME/.config/zetup/aliases.local.zsh"

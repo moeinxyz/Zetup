@@ -124,7 +124,16 @@ set_zsh_as_default() {
 
 install_tmux_plugins() {
     echo "🔌 Installing Tmux plugins..."
-    "$HOME/.tmux/plugins/tpm/bin/install_plugins"
+    if [[ -n "$TMUX" ]]; then
+        # If inside tmux session, install plugins directly
+        "$HOME/.tmux/plugins/tpm/bin/install_plugins"
+    else
+        # If not in tmux session, provide instructions
+        echo "   TPM installed. To install plugins:"
+        echo "   1. Start tmux: tmux"
+        echo "   2. Press: Ctrl-b + Shift-i"
+        echo "   Or run: tmux new-session -d && tmux send-keys 'tmux source ~/.tmux.conf' Enter && sleep 1 && ~/.tmux/plugins/tpm/bin/install_plugins && tmux kill-server"
+    fi
 }
 
 main() {

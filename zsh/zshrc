@@ -1,8 +1,19 @@
 # Zetup - Zsh Configuration
 # =========================
 
-# Get the directory where this config is located
-ZETUP_DIR="$(dirname "$(dirname "$(readlink -f "${(%):-%N}")")")"
+# Get the directory where this config is located (cross-platform compatible)
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS doesn't have readlink -f by default, use greadlink if available, otherwise fallback
+    if command -v greadlink >/dev/null 2>&1; then
+        ZETUP_DIR="$(dirname "$(dirname "$(greadlink -f "${(%):-%N}")")")"
+    else
+        # Fallback for macOS without greadlink
+        ZETUP_DIR="$(cd "$(dirname "${(%):-%N}")/.." && pwd)"
+    fi
+else
+    # Linux and other systems
+    ZETUP_DIR="$(dirname "$(dirname "$(readlink -f "${(%):-%N}")")")"
+fi
 [[ -z "$ZETUP_DIR" ]] && ZETUP_DIR="$HOME/.config/zetup"
 
 # Load Antigen
@@ -21,9 +32,11 @@ antigen bundle command-not-found
 # Community plugins
 antigen bundle zsh-users/zsh-completions
 antigen bundle zsh-users/zsh-syntax-highlighting
+antigen bundle zsh-users/zsh-autosuggestions
+antigen bundle zdharma-continuum/fast-syntax-highlighting
 
-# Theme
-antigen theme robbyrussell
+# Theme - Powerlevel10k for ultimate customization
+antigen theme romkatv/powerlevel10k
 
 # Apply antigen configuration
 antigen apply
@@ -49,8 +62,8 @@ setopt HIST_BEEP
 
 # Additional zsh options
 setopt AUTO_CD
-setopt CORRECT
-setopt CORRECT_ALL
+# setopt CORRECT
+# setopt CORRECT_ALL
 setopt AUTO_LIST
 setopt AUTO_MENU
 setopt ALWAYS_TO_END
@@ -78,6 +91,11 @@ zstyle ':completion:*' menu select
 # Colored completion
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 
+# Enhanced completion styling
+zstyle ':completion:*:descriptions' format '%F{green}-- %d --%f'
+zstyle ':completion:*:warnings' format '%F{red}-- no matches found --%f'
+zstyle ':completion:*:corrections' format '%F{yellow}-- %d (errors: %e) --%f'
+
 # Export environment variables
 export EDITOR="${EDITOR:-vim}"
 export PAGER="${PAGER:-less}"
@@ -85,6 +103,10 @@ export LESS="-R"
 
 # Add local bin to PATH if it exists
 [[ -d "$HOME/.local/bin" ]] && export PATH="$HOME/.local/bin:$PATH"
+
+# Enable colorful output
+export CLICOLOR=1
+export LSCOLORS=ExFxBxDxCxegedabagacad
 
 # macOS specific settings
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -94,4 +116,19 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     elif [[ -f "/usr/local/bin/brew" ]]; then
         eval "$(/usr/local/bin/brew shellenv)"
     fi
+    
+    # Add standard macOS paths
+    export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+    
+    # Add Node.js paths if they exist
+    [[ -d "/usr/local/lib/node_modules" ]] && export PATH="/usr/local/lib/node_modules/.bin:$PATH"
+    [[ -d "/opt/homebrew/lib/node_modules" ]] && export PATH="/opt/homebrew/lib/node_modules/.bin:$PATH"
 fi
+
+# Powerlevel10k instant prompt
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
+
+# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
+[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
