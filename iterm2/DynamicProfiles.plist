@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Profiles</key>
+	<array>
+		<dict>
+			<key>Name</key>
+			<string>Zetup Transparent</string>
+			<key>Guid</key>
+			<string>ZETUP-TRANSPARENT-PROFILE</string>
+			<key>Default Bookmark</key>
+			<string>Yes</string>
+			<key>Badge Text</key>
+			<string></string>
+			<key>Terminal Type</key>
+			<string>xterm-256color</string>
+			<key>Use Terminal Type</key>
+			<true/>
+			
+			<!-- Background Configuration -->
+			<key>Background Color</key>
+			<dict>
+				<key>Red Component</key>
+				<real>0.06</real>
+				<key>Green Component</key>
+				<real>0.06</real>
+				<key>Blue Component</key>
+				<real>0.14</real>
+				<key>Alpha Component</key>
+				<real>1</real>
+			</dict>
+			
+			<!-- Transparency Settings -->
+			<key>Transparency</key>
+			<real>0.15</real>
+			<key>Use Transparency</key>
+			<true/>
+			<key>Blur</key>
+			<true/>
+			<key>Blur Radius</key>
+			<real>5.0</real>
+			
+			<!-- Font Configuration -->
+			<key>Normal Font</key>
+			<string>FiraCode-Regular 17</string>
+			<key>Use Non ASCII Font</key>
+			<false/>
+			
+			<!-- Color Scheme (Cyberpunk Theme) -->
+			<key>Foreground Color</key>
+			<dict>
+				<key>Red Component</key>
+				<real>0.0</real>
+				<key>Green Component</key>
+				<real>1.0</real>
+				<key>Blue Component</key>
+				<real>0.25</real>
+				<key>Alpha Component</key>
+				<real>1</real>
+			</dict>
+			
+			<key>Cursor Color</key>
+			<dict>
+				<key>Red Component</key>
+				<real>0.0</real>
+				<key>Green Component</key>
+				<real>1.0</real>
+				<key>Blue Component</key>
+				<real>0.25</real>
+				<key>Alpha Component</key>
+				<real>1</real>
+			</dict>
+			
+			<key>Selection Color</key>
+			<dict>
+				<key>Red Component</key>
+				<real>1.0</real>
+				<key>Green Component</key>
+				<real>0.0</real>
+				<key>Blue Component</key>
+				<real>0.5</real>
+				<key>Alpha Component</key>
+				<real>0.3</real>
+			</dict>
+			
+			<!-- ANSI Colors -->
+			<key>Ansi 0 Color</key>
+			<dict>
+				<key>Red Component</key>
+				<real>0.0</real>
+				<key>Green Component</key>
+				<real>0.0</real>
+				<key>Blue Component</key>
+				<real>0.0</real>
+			</dict>
+			
+			<key>Ansi 1 Color</key>
+			<dict>
+				<key>Red Component</key>
+				<real>1.0</real>
+				<key>Green Component</key>
+				<real>0.0</real>
+				<key>Blue Component</key>
+				<real>0.25</real>
+			</dict>
+			
+			<key>Ansi 2 Color</key>
+			<dict>
+				<key>Red Component</key>
+				<real>0.0</real>
+				<key>Green Component</key>
+				<real>1.0</real>
+				<key>Blue Component</key>
+				<real>0.25</real>
+			</dict>
+			
+			<key>Ansi 3 Color</key>
+			<dict>
+				<key>Red Component</key>
+				<real>1.0</real>
+				<key>Green Component</key>
+				<real>1.0</real>
+				<key>Blue Component</key>
+				<real>0.0</real>
+			</dict>
+			
+			<key>Ansi 4 Color</key>
+			<dict>
+				<key>Red Component</key>
+				<real>0.0</real>
+				<key>Green Component</key>
+				<real>0.83</real>
+				<key>Blue Component</key>
+				<real>1.0</real>
+			</dict>
+			
+			<key>Ansi 5 Color</key>
+			<dict>
+				<key>Red Component</key>
+				<real>1.0</real>
+				<key>Green Component</key>
+				<real>0.0</real>
+				<key>Blue Component</key>
+				<real>0.5</real>
+			</dict>
+			
+			<key>Ansi 6 Color</key>
+			<dict>
+				<key>Red Component</key>
+				<real>0.0</real>
+				<key>Green Component</key>
+				<real>1.0</real>
+				<key>Blue Component</key>
+				<real>1.0</real>
+			</dict>
+			
+			<key>Ansi 7 Color</key>
+			<dict>
+				<key>Red Component</key>
+				<real>0.75</real>
+				<key>Green Component</key>
+				<real>0.75</real>
+				<key>Blue Component</key>
+				<real>0.75</real>
+			</dict>
+			
+			<!-- Bright Colors -->
+			<key>Ansi 8 Color</key>
+			<dict>
+				<key>Red Component</key>
+				<real>0.25</real>
+				<key>Green Component</key>
+				<real>0.25</real>
+				<key>Blue Component</key>
+				<real>0.25</real>
+			</dict>
+			
+			<key>Ansi 9 Color</key>
+			<dict>
+				<key>Red Component</key>
+				<real>1.0</real>
+				<key>Green Component</key>
+				<real>0.0</real>
+				<key>Blue Component</key>
+				<real>0.25</real>
+			</dict>
+			
+			<key>Ansi 10 Color</key>
+			<dict>
+				<key>Red Component</key>
+				<real>0.0</real>
+				<key>Green Component</key>
+				<real>1.0</real>
+				<key>Blue Component</key>
+				<real>0.25</real>
+			</dict>
+			
+			<key>Ansi 11 Color</key>
+			<dict>
+				<key>Red Component</key>
+				<real>1.0</real>
+				<key>Green Component</key>
+				<real>1.0</real>
+				<key>Blue Component</key>
+				<real>0.0</real>
+			</dict>
+			
+			<key>Ansi 12 Color</key>
+			<dict>
+				<key>Red Component</key>
+				<real>0.0</real>
+				<key>Green Component</key>
+				<real>0.83</real>
+				<key>Blue Component</key>
+				<real>1.0</real>
+			</dict>
+			
+			<key>Ansi 13 Color</key>
+			<dict>
+				<key>Red Component</key>
+				<real>1.0</real>
+				<key>Green Component</key>
+				<real>0.0</real>
+				<key>Blue Component</key>
+				<real>0.5</real>
+			</dict>
+			
+			<key>Ansi 14 Color</key>
+			<dict>
+				<key>Red Component</key>
+				<real>0.0</real>
+				<key>Green Component</key>
+				<real>1.0</real>
+				<key>Blue Component</key>
+				<real>1.0</real>
+			</dict>
+			
+			<key>Ansi 15 Color</key>
+			<dict>
+				<key>Red Component</key>
+				<real>1.0</real>
+				<key>Green Component</key>
+				<real>1.0</real>
+				<key>Blue Component</key>
+				<real>1.0</real>
+			</dict>
+			
+			<!-- Window Settings -->
+			<key>Columns</key>
+			<integer>120</integer>
+			<key>Rows</key>
+			<integer>30</integer>
+			<key>Scrollback Lines</key>
+			<integer>10000</integer>
+			<key>Unlimited Scrollback</key>
+			<false/>
+			
+			<!-- Other Settings -->
+			<key>Mouse Reporting</key>
+			<true/>
+			<key>Allow Title Reporting</key>
+			<true/>
+			<key>Disable Window Resizing</key>
+			<false/>
+			<key>Sync Title</key>
+			<false/>
+			<key>Close Sessions On End</key>
+			<true/>
+			<key>Non Ascii Double Width</key>
+			<false/>
+			<key>Use Bold Font</key>
+			<true/>
+			<key>Use Bright Bold</key>
+			<true/>
+			<key>Use Italic Font</key>
+			<true/>
+		</dict>
+	</array>
+</dict>
+</plist>

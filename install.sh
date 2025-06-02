@@ -102,6 +102,14 @@ link_configs() {
     ln -sf "$ZETUP_DIR/shared/aliases.zsh" "$HOME/.config/zetup/aliases.zsh"
 }
 
+install_iterm2_profile() {
+    echo "📱 Installing iTerm2 transparent profile..."
+    ITERM2_PROFILES_DIR="$HOME/Library/Application Support/iTerm2/DynamicProfiles"
+    mkdir -p "$ITERM2_PROFILES_DIR"
+    cp "$ZETUP_DIR/iterm2/DynamicProfiles.plist" "$ITERM2_PROFILES_DIR/Zetup.plist"
+    echo "   ✅ iTerm2 profile installed. Restart iTerm2 and select 'Zetup Transparent' profile."
+}
+
 set_zsh_as_default() {
     ZSH_PATH="$(which zsh)"
     
@@ -144,6 +152,7 @@ main() {
     install_antigen
     install_tpm
     link_configs
+    install_iterm2_profile
     set_zsh_as_default
     install_tmux_plugins
     
@@ -151,9 +160,10 @@ main() {
     echo "🎉 Zetup installation complete!"
     echo ""
     echo "Next steps:"
-    echo "1. Restart your terminal or run 'exec zsh'"
-    echo "2. Run 'tmux' to start a new session"
-    echo "3. Customize machine-specific settings in ~/.config/zetup/local.zsh"
+    echo "1. Restart iTerm2 and select 'Zetup Transparent' profile for transparency"
+    echo "2. Restart your terminal or run 'exec zsh'"
+    echo "3. Run 'tmux' to start a new session"
+    echo "4. Customize machine-specific settings in ~/.config/zetup/local.zsh"
     echo ""
     echo "Backup location: $BACKUP_DIR"
 }
