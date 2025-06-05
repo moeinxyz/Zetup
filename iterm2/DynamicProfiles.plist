@@ -275,6 +275,21 @@
 			<true/>
 			<key>Use Italic Font</key>
 			<true/>
+			
+			<!-- Selection Settings -->
+			<key>Word Characters</key>
+			<string>/-+\~_.</string>
+			<key>Smart Selection Rules</key>
+			<array>
+				<dict>
+					<key>notes</key>
+					<string>Word bounded by whitespace</string>
+					<key>precision</key>
+					<string>normal</string>
+					<key>regex</key>
+					<string>\S+</string>
+				</dict>
+			</array>
 		</dict>
 	</array>
 </dict>
