@@ -48,11 +48,13 @@ cd zetup
   - `tmux-plugins/tmux-sensible` - Sensible defaults
   - `wfxr/tmux-power` - Beautiful powerline theme
 - **Features**:
-  - Mouse support enabled
+  - **iTerm-native text selection** - Works exactly like without tmux
   - Vi-mode key bindings
   - Intuitive pane splitting (`|` and `-`)
   - Smart pane navigation
   - Enhanced status bar
+  - **System clipboard integration** - Copy to macOS clipboard
+  - **Keyboard copy mode** - Advanced selection for power users
 
 ## Directory Structure
 
@@ -130,6 +132,120 @@ Create local override files in `~/.config/zetup/`:
 
 ## Advanced Usage
 
+### Tmux Copy/Paste Guide
+
+The tmux configuration is designed to work seamlessly with iTerm's native text selection:
+
+#### Mouse Selection (Recommended)
+1. **Click and drag** to select text - works exactly like in iTerm without tmux
+2. **Copy selection**: `Cmd+C` or right-click → Copy
+3. **Paste**: `Cmd+V` in any application
+
+#### Keyboard Selection (tmux copy mode)
+1. **Enter copy mode**: `prefix + [` (or `Ctrl+b [`)
+2. **Start selection**: Press `v` to begin selection
+3. **Move cursor**: Use arrow keys or vi keys (`h`, `j`, `k`, `l`)
+4. **Copy selection**: Press `y` - text is copied to system clipboard
+5. **Exit copy mode**: Automatically exits after copying
+
+#### Quick Copy Options
+- **Double-click** on a word to copy it (iTerm native)
+- **Triple-click** to copy entire line (iTerm native)
+
+#### Pasting
+- **From tmux buffer**: `prefix + ]`
+- **From system clipboard**: `Cmd+V` (works in most terminals)
+
+#### Why This Approach?
+- **Natural feel**: Text selection works exactly like in iTerm without tmux
+- **No conflicts**: tmux doesn't interfere with iTerm's native selection
+- **Familiar workflow**: Use `Cmd+C`/`Cmd+V` as you normally would
+- **Fallback option**: tmux copy mode available for advanced users
+
+### Tmux Key Bindings
+
+#### **Prefix Key**: `Ctrl+b` (default)
+
+---
+
+#### **Essential Bindings**
+
+**Pane Management**
+- `prefix + |` - Split pane horizontally
+- `prefix + -` - Split pane vertically  
+- `prefix + h/j/k/l` - Navigate between panes (vim-style)
+- `prefix + H/J/K/L` - Resize panes (5 units at a time)
+- `prefix + z` - Toggle pane zoom
+- `prefix + x` - Kill current pane
+
+**Window Management**
+- `prefix + c` - Create new window
+- `prefix + n` - Next window
+- `prefix + p` - Previous window
+- `prefix + 0-9` - Switch to window by number
+- `prefix + ,` - Rename current window
+- `prefix + &` - Kill current window
+
+**Copy/Paste**
+- `prefix + [` - Enter copy mode
+- `prefix + ]` - Paste from tmux buffer
+- **In copy mode**: `v` to select, `y` to copy to clipboard
+
+---
+
+#### **No-Prefix Bindings (Alt/Arrow)**
+
+**Pane Navigation** (No prefix needed!)
+- `Alt + ↑` - Select pane above
+- `Alt + ↓` - Select pane below  
+- `Alt + ←` - Select pane left
+- `Alt + →` - Select pane right
+
+---
+
+#### **Utility Bindings**
+
+**Session Management**
+- `prefix + d` - Detach from session
+- `prefix + s` - List sessions
+- `prefix + $` - Rename session
+
+**Configuration**
+- `prefix + r` - Reload tmux config
+- `prefix + ?` - Show all key bindings
+
+**Layout Management**
+- `prefix + Space` - Next layout
+- `prefix + M-1` - Even horizontal layout
+- `prefix + M-2` - Even vertical layout
+- `prefix + M-3` - Main horizontal layout
+- `prefix + M-4` - Main vertical layout
+- `prefix + M-5` - Tiled layout
+
+---
+
+#### **Copy Mode (Advanced)**
+
+When in copy mode (`prefix + [`):
+- `v` - Start selection
+- `y` - Copy selection to clipboard
+- `h/j/k/l` - Move cursor
+- `Ctrl+u/Ctrl+d` - Page up/down
+- `g/G` - Go to top/bottom
+- `?/` - Search backward/forward
+- `n/N` - Next/previous search result
+- `q` - Quit copy mode
+
+---
+
+#### **Pro Tips**
+
+1. **Most Used**: `Alt + arrows` for pane navigation (no prefix!)
+2. **Quick Splits**: `prefix + |` and `prefix + -` for new panes
+3. **Vim Navigation**: `prefix + h/j/k/l` for pane switching
+4. **Text Selection**: Use iTerm's native selection (mouse drag + `Cmd+C`)
+5. **Config Reload**: `prefix + r` after making changes
+
 ### Manual Plugin Installation
 
 If you need to install tmux plugins manually:
@@ -158,6 +274,13 @@ cp ~/.zetup-backup-*/tmux.conf ~/.tmux.conf
 2. **Tmux plugins not working**: Run TPM installer manually
 3. **Zsh not default shell**: Run `chsh -s $(which zsh)`
 4. **Permission denied**: Ensure `install.sh` is executable (`chmod +x install.sh`)
+
+### Tmux Copy/Paste Issues
+
+1. **Text not copying to clipboard**: Ensure `pbcopy` is available (`which pbcopy`)
+2. **Mouse selection not working**: Check if mouse mode is enabled (`tmux show -g mouse`)
+3. **Copy mode not responding**: Try reloading config (`prefix + r`)
+4. **Clipboard integration broken**: Restart tmux server (`tmux kill-server`)
 
 ### Homebrew Issues
 

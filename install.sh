@@ -127,6 +127,25 @@ install_tmux_plugins() {
     "$HOME/.tmux/plugins/tpm/bin/install_plugins"
 }
 
+verify_tmux_setup() {
+    echo "🔍 Verifying tmux configuration..."
+    
+    # Check if pbcopy is available (required for copy/paste)
+    if ! command -v pbcopy &> /dev/null; then
+        echo "   ⚠️  Warning: pbcopy not found. Copy/paste functionality may not work."
+    else
+        echo "   ✅ pbcopy found - copy/paste will work"
+    fi
+    
+    # Test tmux configuration syntax
+    if tmux -f "$HOME/.tmux.conf" start-server \; list-keys > /dev/null 2>&1; then
+        echo "   ✅ Tmux configuration is valid"
+    else
+        echo "   ❌ Tmux configuration has errors"
+        return 1
+    fi
+}
+
 main() {
     check_macos
     backup_existing_configs
@@ -137,6 +156,7 @@ main() {
     link_configs
     set_zsh_as_default
     install_tmux_plugins
+    verify_tmux_setup
     
     echo ""
     echo "🎉 Zetup installation complete!"
@@ -144,7 +164,8 @@ main() {
     echo "Next steps:"
     echo "1. Restart your terminal or run 'exec zsh'"
     echo "2. Run 'tmux' to start a new session"
-    echo "3. Customize machine-specific settings in ~/.config/zetup/local.zsh"
+    echo "3. Test copy/paste: Select text with mouse, then Cmd+V to paste"
+    echo "4. Customize machine-specific settings in ~/.config/zetup/local.zsh"
     echo ""
     echo "Backup location: $BACKUP_DIR"
 }
