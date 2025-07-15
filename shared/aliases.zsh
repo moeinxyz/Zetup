@@ -67,6 +67,9 @@ alias localip='ifconfig | grep "inet " | grep -v 127.0.0.1 | cut -d\  -f2'
 alias ping='ping -c 5'
 alias ports='netstat -tulanp'
 
+# n8n VPS connection
+alias n8n-remote='ssh -L 5678:localhost:5678 ubuntu@132.145.53.47 -N -f && sleep 2 && open http://localhost:5678'
+
 # System
 alias h='history'
 alias j='jobs -l'
