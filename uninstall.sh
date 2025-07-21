@@ -77,6 +77,34 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     fi
 fi
 
+read -p "Do you want to remove AI Terminal Assistant? [y/N]: " -n 1 -r
+echo
+
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo "🤖 Removing AI Terminal Assistant..."
+    
+    # Stop Ollama service
+    if brew services list | grep -q ollama; then
+        brew services stop ollama
+        echo "   Stopped Ollama service"
+    fi
+    
+    # Uninstall LLM CLI tool
+    if command -v llm &> /dev/null; then
+        pipx uninstall llm
+        echo "   Removed LLM CLI tool"
+    fi
+    
+    # Remove Ollama models and data
+    if [[ -d "$HOME/.ollama" ]]; then
+        rm -rf "$HOME/.ollama"
+        echo "   Removed Ollama models and data"
+    fi
+    
+    echo "✅ AI Terminal Assistant removed"
+    echo "   Note: Ollama itself was not uninstalled. Run 'brew uninstall ollama' to remove it completely."
+fi
+
 read -p "Do you want to reset shell to system default? [y/N]: " -n 1 -r
 echo
 
@@ -89,7 +117,7 @@ fi
 echo ""
 echo "🎉 Uninstallation complete!"
 echo ""
-echo "Note: Homebrew and installed packages (zsh, tmux, git) were not removed."
-echo "You can remove them manually with: brew uninstall zsh tmux git"
+echo "Note: Homebrew and installed packages (zsh, tmux, git, ollama) were not removed."
+echo "You can remove them manually with: brew uninstall zsh tmux git ollama"
 echo ""
 echo "Backup directory (if exists): $BACKUP_DIR"

@@ -59,6 +59,9 @@ setopt COMPLETE_IN_WORD
 # Load shared aliases
 [[ -f "$HOME/.config/zetup/aliases.zsh" ]] && source "$HOME/.config/zetup/aliases.zsh"
 
+# Load AI assistant
+[[ -f "$HOME/.config/zetup/ai-assistant.zsh" ]] && source "$HOME/.config/zetup/ai-assistant.zsh"
+
 # Load machine-specific configuration
 [[ -f "$HOME/.config/zetup/local.zsh" ]] && source "$HOME/.config/zetup/local.zsh"
 

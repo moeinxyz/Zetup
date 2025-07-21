@@ -70,6 +70,57 @@ install_dependencies() {
     fi
 }
 
+install_ai_assistant() {
+    echo "🤖 Installing AI Terminal Assistant..."
+    
+    # Install Ollama if not present
+    if ! brew list ollama &> /dev/null; then
+        echo "   Installing Ollama..."
+        brew install ollama
+    else
+        echo "   ✅ Ollama already installed"
+    fi
+    
+    # Install pipx if not present
+    if ! command -v pipx &> /dev/null; then
+        echo "   Installing pipx..."
+        brew install pipx
+        pipx ensurepath
+    else
+        echo "   ✅ pipx already installed"
+    fi
+    
+    # Install LLM CLI tool
+    if ! command -v llm &> /dev/null; then
+        echo "   Installing LLM CLI tool..."
+        pipx install llm
+    else
+        echo "   ✅ LLM CLI already installed"
+    fi
+    
+    # Start Ollama service
+    echo "   Starting Ollama service..."
+    if brew list ollama &> /dev/null; then
+        brew services start ollama
+    else
+        echo "   ❌ Ollama not installed, skipping service start"
+        return 1
+    fi
+    
+    # Pull a suitable local model (CodeLlama for command generation)
+    echo "   Pulling CodeLlama model (this may take a few minutes)..."
+    ollama pull codellama:7b-instruct
+    
+    # Configure LLM to use Ollama
+    echo "   Configuring LLM to use local Ollama..."
+    pipx inject llm llm-ollama
+    
+    # Create AI assistant config directory
+    mkdir -p "$HOME/.config/zetup/ai"
+    
+    echo "   ✅ AI Terminal Assistant setup complete"
+}
+
 install_antigen() {
     if [[ ! -f "$HOME/.antigen.zsh" ]]; then
         echo "🔗 Installing Antigen..."
@@ -100,6 +151,9 @@ link_configs() {
     # Create aliases directory if it doesn't exist
     mkdir -p "$HOME/.config/zetup"
     ln -sf "$ZETUP_DIR/shared/aliases.zsh" "$HOME/.config/zetup/aliases.zsh"
+    
+    # Link AI assistant
+    ln -sf "$ZETUP_DIR/shared/ai-assistant.zsh" "$HOME/.config/zetup/ai-assistant.zsh"
 }
 
 set_zsh_as_default() {
@@ -151,6 +205,7 @@ main() {
     backup_existing_configs
     install_homebrew
     install_dependencies
+    install_ai_assistant
     install_antigen
     install_tpm
     link_configs
@@ -165,7 +220,8 @@ main() {
     echo "1. Restart your terminal or run 'exec zsh'"
     echo "2. Run 'tmux' to start a new session"
     echo "3. Test copy/paste: Select text with mouse, then Cmd+V to paste"
-    echo "4. Customize machine-specific settings in ~/.config/zetup/local.zsh"
+    echo "4. Try AI assistant: 'list all files' or 'show git status'"
+    echo "5. Customize machine-specific settings in ~/.config/zetup/local.zsh"
     echo ""
     echo "Backup location: $BACKUP_DIR"
 }
