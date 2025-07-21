@@ -7,6 +7,7 @@
 ZETUP_AI_CONFIG_DIR="$HOME/.config/zetup/ai"
 ZETUP_AI_APPROVED_FILE="$ZETUP_AI_CONFIG_DIR/approved_commands.json"
 ZETUP_AI_MODEL="codellama:7b-instruct"
+ZETUP_AI_HELPERS_DIR="$HOME/.config/zetup/ai-helpers"
 
 # Initialize AI assistant configuration
 _zetup_ai_init() {
@@ -41,66 +42,14 @@ EOF
 # Check if a command matches approved patterns
 _zetup_ai_is_approved() {
     local command="$1"
-    
-    # Read approved patterns from JSON file
-    if [[ ! -f "$ZETUP_AI_APPROVED_FILE" ]]; then
-        return 1
-    fi
-    
-    local patterns
-    patterns=$(python3 -c "
-import json
-import sys
-import fnmatch
-
-try:
-    with open('$ZETUP_AI_APPROVED_FILE', 'r') as f:
-        data = json.load(f)
-    
-    command = sys.argv[1] if len(sys.argv) > 1 else ''
-    
-    for pattern in data.get('patterns', []):
-        if fnmatch.fnmatch(command, pattern):
-            sys.exit(0)
-    
-    sys.exit(1)
-except Exception:
-    sys.exit(1)
-" "$command" 2>/dev/null)
-    
+    python3 "$ZETUP_AI_HELPERS_DIR/check_approval.py" "$ZETUP_AI_APPROVED_FILE" "$command" 2>/dev/null
     return $?
 }
 
 # Add command to approved list
 _zetup_ai_approve_always() {
     local command="$1"
-    
-    # Use Python to safely update JSON file
-    python3 -c "
-import json
-import sys
-
-try:
-    with open('$ZETUP_AI_APPROVED_FILE', 'r') as f:
-        data = json.load(f)
-    
-    command = sys.argv[1] if len(sys.argv) > 1 else ''
-    
-    if 'patterns' not in data:
-        data['patterns'] = []
-    
-    if command not in data['patterns']:
-        data['patterns'].append(command)
-        data['patterns'].sort()
-    
-    with open('$ZETUP_AI_APPROVED_FILE', 'w') as f:
-        json.dump(data, f, indent=2)
-    
-    print(f'Added \"{command}\" to approved commands')
-except Exception as e:
-    print(f'Error updating approved commands: {e}', file=sys.stderr)
-    sys.exit(1)
-" "$command"
+    python3 "$ZETUP_AI_HELPERS_DIR/add_approval.py" "$ZETUP_AI_APPROVED_FILE" "$command"
 }
 
 # Gather context about current environment

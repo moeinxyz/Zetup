@@ -154,6 +154,9 @@ link_configs() {
     
     # Link AI assistant
     ln -sf "$ZETUP_DIR/shared/ai-assistant.zsh" "$HOME/.config/zetup/ai-assistant.zsh"
+    
+    # Link AI helper scripts
+    ln -sf "$ZETUP_DIR/shared/ai-helpers" "$HOME/.config/zetup/ai-helpers"
 }
 
 set_zsh_as_default() {
