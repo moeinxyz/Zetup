@@ -49,8 +49,8 @@ setopt HIST_BEEP
 
 # Additional zsh options
 setopt AUTO_CD
-setopt CORRECT
-setopt CORRECT_ALL
+unsetopt CORRECT
+unsetopt CORRECT_ALL
 setopt AUTO_LIST
 setopt AUTO_MENU
 setopt ALWAYS_TO_END
@@ -95,3 +95,4 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         eval "$(/usr/local/bin/brew shellenv)"
     fi
 fi
+PATH=~/.console-ninja/.bin:$PATH
