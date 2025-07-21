@@ -32,7 +32,14 @@ _zetup_ai_init() {
     "grep *",
     "find *",
     "echo *",
-    "history *"
+    "history *",
+    "sort *",
+    "wc *",
+    "du *",
+    "which *",
+    "type *",
+    "file *",
+    "stat *"
   ]
 }
 EOF
@@ -87,20 +94,19 @@ _zetup_ai_generate_command() {
     local request="$1"
     local context="$(_zetup_ai_gather_context)"
     
-    local prompt="You are a bash command assistant. The user wants you to generate a bash command.
+    local prompt="Generate a bash command. Reply with ONLY the command, nothing else.
 
 Context:$context
 
-User request: $request
-
-IMPORTANT: Your response must be EXACTLY one line containing ONLY the bash command. No explanations, no markdown, no code blocks, no extra text.
+Request: $request
 
 Examples:
-User: list files -> ls -la  
-User: show git status -> git status
-User: count files -> find . -type f | wc -l
+list files -> ls -la
+show git status -> git status
+count files -> find . -type f | wc -l
+largest file in Downloads -> find ~/Downloads -type f -exec ls -la {} \; | sort -k5 -nr | head -1
 
-Your command:"
+Command:"
 
     # Use LLM to generate command
     local suggested_command
@@ -170,15 +176,18 @@ _zetup_ai_assist() {
     esac
 }
 
-# Hook for command not found
+# Hook for command not found (override any existing handler)
 command_not_found_handler() {
     local cmd="$1"
     shift
-    local args="$@"
+    local args="$*"
+    local full_command="$cmd $args"
     
     # If it looks like a natural language request, pass to AI
-    if [[ "$cmd" =~ [[:space:]] || "$cmd" =~ [a-z]{3,} ]]; then
-        _zetup_ai_assist "$cmd" "$args"
+    # Check for common question/command words, multiple words, or contains question marks
+    if [[ "$cmd" =~ ^(can|could|how|what|where|when|why|show|tell|list|find|get|count|check)$ ]] || \
+       [[ "$args" != "" ]]; then
+        _zetup_ai_assist "$full_command"
     else
         echo "zsh: command not found: $cmd"
         return 127
@@ -191,3 +200,7 @@ _zetup_ai_init
 # Create alias for explicit AI requests
 alias ask='_zetup_ai_assist'
 alias ai='_zetup_ai_assist'
+
+# Helper function for questions with special characters
+# Usage: q "can you tell me how many files are in this directory?"
+alias q='_zetup_ai_assist'
