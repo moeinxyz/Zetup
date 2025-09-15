@@ -62,11 +62,14 @@ cd zetup
 zetup/
 ├── install.sh              # Main installation script
 ├── zsh/
-│   └── zshrc               # Zsh configuration
+│   └── zshrc.local.template # Template for local ~/.zshrc
 ├── tmux/
 │   └── tmux.conf           # Tmux configuration
 ├── shared/
-│   └── aliases.zsh         # Centralized aliases
+│   ├── shared.zsh          # Main Zsh configuration (sourced by local ~/.zshrc)
+│   ├── aliases.zsh         # Centralized aliases
+│   ├── ai-assistant.zsh    # AI terminal assistant
+│   └── ai-helpers/         # AI helper scripts
 ├── examples/
 │   ├── local.zsh.example           # Machine-specific Zsh config template
 │   ├── tmux.local.conf.example     # Machine-specific Tmux config template
@@ -78,21 +81,36 @@ zetup/
 
 ### Machine-Specific Configuration
 
-Create local override files in `~/.config/zetup/`:
+Zetup creates a **local** `~/.zshrc` file that sources the shared configuration. This means:
 
-1. **Zsh Overrides**: `~/.config/zetup/local.zsh`
+- ✅ **Tools can safely modify `~/.zshrc`** without affecting the shared config
+- ✅ **Machine-specific paths stay local** and aren't committed to git
+- ✅ **Shared configuration stays clean** and portable
+
+#### Adding Machine-Specific Settings
+
+1. **Direct in `~/.zshrc`**: Add paths, aliases, and settings directly to your local `~/.zshrc`
+   ```bash
+   # Machine-specific PATH additions
+   export PATH="$HOME/custom-tools:$PATH"
+
+   # Machine-specific aliases
+   alias myserver='ssh user@myserver.com'
+   ```
+
+2. **Zsh Overrides**: `~/.config/zetup/local.zsh` (optional)
    ```bash
    cp examples/local.zsh.example ~/.config/zetup/local.zsh
    # Edit with your machine-specific settings
    ```
 
-2. **Tmux Overrides**: `~/.config/zetup/tmux.local.conf`
+3. **Tmux Overrides**: `~/.config/zetup/tmux.local.conf`
    ```bash
    cp examples/tmux.local.conf.example ~/.config/zetup/tmux.local.conf
    # Add your custom tmux settings
    ```
 
-3. **Local Aliases**: `~/.config/zetup/aliases.local.zsh`
+4. **Local Aliases**: `~/.config/zetup/aliases.local.zsh` (optional)
    ```bash
    cp examples/aliases.local.zsh.example ~/.config/zetup/aliases.local.zsh
    # Add machine-specific aliases
@@ -100,7 +118,7 @@ Create local override files in `~/.config/zetup/`:
 
 ### Global User Customization
 
-- **Zsh**: `~/.zshrc.local` - Additional user customizations
+- **Zsh**: `~/.zshrc.local` - Additional user customizations (loaded automatically)
 - **Tmux**: Machine-specific configs are loaded via the local.conf mechanism
 
 ## Included Aliases

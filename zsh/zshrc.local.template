@@ -1,0 +1,24 @@
+# Local Zsh Configuration (Machine-Specific)
+# ==========================================
+# This file is created locally and not tracked in git
+# Tools that modify ~/.zshrc will modify this file, keeping the shared config clean
+
+# Source the shared Zetup configuration
+source "$HOME/.config/zetup/shared.zsh"
+
+# Machine-specific PATH additions
+# Add your custom paths here - these will not be tracked in git
+# Example: export PATH="$HOME/.console-ninja/.bin:$PATH"
+# Example: export PATH="/Users/$(whoami)/.codeium/windsurf/bin:$PATH"
+
+# Machine-specific aliases
+# Example: alias n8n-remote='ssh -L 5678:localhost:5678 ubuntu@IP -N -f && sleep 2 && open http://localhost:5678'
+
+# Load machine-specific configuration (if exists)
+[[ -f "$HOME/.config/zetup/local.zsh" ]] && source "$HOME/.config/zetup/local.zsh"
+
+# Load any additional user customizations (if exists)
+[[ -f "$HOME/.zshrc.local" ]] && source "$HOME/.zshrc.local"
+
+# Tool-specific additions will be added below by various installers
+# This keeps them separate from the shared configuration

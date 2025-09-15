@@ -101,7 +101,12 @@ install_ai_assistant() {
     # Start Ollama service
     echo "   Starting Ollama service..."
     if brew list ollama &> /dev/null; then
-        brew services start ollama
+        if brew services start ollama &> /dev/null; then
+            echo "   ✅ Ollama service started"
+        else
+            echo "   ⚠️  Ollama service start failed (this is often harmless)"
+            echo "   You can manually start it later with: brew services start ollama"
+        fi
     else
         echo "   ❌ Ollama not installed, skipping service start"
         return 1
@@ -140,21 +145,32 @@ install_tpm() {
 }
 
 link_configs() {
-    echo "🔗 Linking configuration files..."
-    
-    # Link Zsh config
-    ln -sf "$ZETUP_DIR/zsh/zshrc" "$HOME/.zshrc"
-    
+    echo "🔗 Setting up configuration files..."
+
+    # Create zetup config directory
+    mkdir -p "$HOME/.config/zetup"
+
+    # Link shared Zsh config
+    ln -sf "$ZETUP_DIR/shared/shared.zsh" "$HOME/.config/zetup/shared.zsh"
+
+    # Create local ~/.zshrc from template (not a symlink)
+    if [[ ! -f "$HOME/.zshrc" ]]; then
+        cp "$ZETUP_DIR/zsh/zshrc.local.template" "$HOME/.zshrc"
+        echo "   Created local ~/.zshrc (tools can modify this without affecting shared config)"
+    else
+        echo "   ⚠️  ~/.zshrc already exists, not overwriting. You may need to manually add:"
+        echo "      source \"\$HOME/.config/zetup/shared.zsh\""
+    fi
+
     # Link Tmux config
     ln -sf "$ZETUP_DIR/tmux/tmux.conf" "$HOME/.tmux.conf"
-    
-    # Create aliases directory if it doesn't exist
-    mkdir -p "$HOME/.config/zetup"
+
+    # Link shared aliases
     ln -sf "$ZETUP_DIR/shared/aliases.zsh" "$HOME/.config/zetup/aliases.zsh"
-    
+
     # Link AI assistant
     ln -sf "$ZETUP_DIR/shared/ai-assistant.zsh" "$HOME/.config/zetup/ai-assistant.zsh"
-    
+
     # Link AI helper scripts
     ln -sf "$ZETUP_DIR/shared/ai-helpers" "$HOME/.config/zetup/ai-helpers"
 }

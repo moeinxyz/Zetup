@@ -33,8 +33,11 @@ echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "🗑️  Removing Zetup configurations..."
     
-    # Remove symlinked configs (if they point to Zetup)
-    if [[ -L "$HOME/.zshrc" ]]; then
+    # Remove Zetup configs
+    if [[ -f "$HOME/.zshrc" ]] && grep -q "\.config/zetup/shared\.zsh" "$HOME/.zshrc" 2>/dev/null; then
+        echo "   ⚠️  ~/.zshrc contains Zetup configuration but is a local file"
+        echo "   Please manually edit ~/.zshrc to remove Zetup references"
+    elif [[ -L "$HOME/.zshrc" ]]; then
         rm "$HOME/.zshrc"
         echo "   Removed ~/.zshrc symlink"
     fi

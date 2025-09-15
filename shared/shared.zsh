@@ -62,11 +62,7 @@ setopt COMPLETE_IN_WORD
 # Load AI assistant
 [[ -f "$HOME/.config/zetup/ai-assistant.zsh" ]] && source "$HOME/.config/zetup/ai-assistant.zsh"
 
-# Load machine-specific configuration
-[[ -f "$HOME/.config/zetup/local.zsh" ]] && source "$HOME/.config/zetup/local.zsh"
-
-# Load any additional user customizations
-[[ -f "$HOME/.zshrc.local" ]] && source "$HOME/.zshrc.local"
+# Note: Machine-specific configurations are now loaded by ~/.zshrc (local file)
 
 # Completion system
 autoload -Uz compinit
@@ -98,4 +94,3 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         eval "$(/usr/local/bin/brew shellenv)"
     fi
 fi
-PATH=~/.console-ninja/.bin:$PATH
