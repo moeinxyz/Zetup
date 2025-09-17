@@ -44,7 +44,7 @@ install_homebrew() {
 
 install_dependencies() {
     echo "📦 Installing dependencies..."
-    
+
     # Install Zsh if not present
     if ! command -v zsh &> /dev/null; then
         echo "   Installing Zsh..."
@@ -52,7 +52,7 @@ install_dependencies() {
     else
         echo "   ✅ Zsh already installed"
     fi
-    
+
     # Install Tmux if not present
     if ! command -v tmux &> /dev/null; then
         echo "   Installing Tmux..."
@@ -60,13 +60,35 @@ install_dependencies() {
     else
         echo "   ✅ Tmux already installed"
     fi
-    
+
     # Install Git if not present
     if ! command -v git &> /dev/null; then
         echo "   Installing Git..."
         brew install git
     else
         echo "   ✅ Git already installed"
+    fi
+
+    # Install Nerd Fonts for better icon support
+    if ! brew list --cask font-fira-code-nerd-font &> /dev/null; then
+        echo "   Installing FiraCode Nerd Font for icon support..."
+        brew install --cask font-fira-code-nerd-font
+    else
+        echo "   ✅ FiraCode Nerd Font already installed"
+    fi
+
+    if ! brew list --cask font-jetbrains-mono-nerd-font &> /dev/null; then
+        echo "   Installing JetBrains Mono Nerd Font for icon support..."
+        brew install --cask font-jetbrains-mono-nerd-font
+    else
+        echo "   ✅ JetBrains Mono Nerd Font already installed"
+    fi
+
+    if ! brew list --cask font-meslo-lg-nerd-font &> /dev/null; then
+        echo "   Installing Meslo LG Nerd Font for icon support..."
+        brew install --cask font-meslo-lg-nerd-font
+    else
+        echo "   ✅ Meslo LG Nerd Font already installed"
     fi
 }
 
@@ -136,8 +158,15 @@ install_antigen() {
 }
 
 install_tpm() {
+    # Remove any existing symlinks or installations
+    if [[ -L "$HOME/.tmux/plugins/tpm" ]]; then
+        echo "🔄 Removing old TPM symlink..."
+        rm "$HOME/.tmux/plugins/tpm"
+    fi
+
     if [[ ! -d "$HOME/.tmux/plugins/tpm" ]]; then
         echo "🔌 Installing TPM (Tmux Plugin Manager)..."
+        mkdir -p "$HOME/.tmux/plugins"
         git clone https://github.com/tmux-plugins/tpm "$HOME/.tmux/plugins/tpm"
     else
         echo "✅ TPM already installed"
@@ -197,7 +226,21 @@ set_zsh_as_default() {
 
 install_tmux_plugins() {
     echo "🔌 Installing Tmux plugins..."
+
+    # Ensure TPM is properly installed
+    if [[ ! -d "$HOME/.tmux/plugins/tpm" ]]; then
+        echo "   ❌ TPM not found, cannot install plugins"
+        return 1
+    fi
+
+    # Install plugins via TPM
     "$HOME/.tmux/plugins/tpm/bin/install_plugins"
+
+    # Verify Dracula theme was installed
+    if [[ ! -d "$HOME/.tmux/plugins/tmux" ]]; then
+        echo "   ⚠️  Dracula theme not found, installing manually..."
+        git clone https://github.com/dracula/tmux.git "$HOME/.tmux/plugins/tmux"
+    fi
 }
 
 verify_tmux_setup() {
@@ -237,10 +280,13 @@ main() {
     echo ""
     echo "Next steps:"
     echo "1. Restart your terminal or run 'exec zsh'"
-    echo "2. Run 'tmux' to start a new session"
-    echo "3. Test copy/paste: Select text with mouse, then Cmd+V to paste"
-    echo "4. Try AI assistant: 'list all files' or 'show git status'"
-    echo "5. Customize machine-specific settings in ~/.config/zetup/local.zsh"
+    echo "2. Set your terminal font to 'FiraCode Nerd Font' for proper icon display"
+    echo "   • iTerm2: Preferences > Profiles > Text > Font"
+    echo "   • Terminal.app: Preferences > Profiles > Font"
+    echo "3. Run 'tmux' to start a new session and see the Dracula theme"
+    echo "4. Test copy/paste: Select text with mouse, then Cmd+V to paste"
+    echo "5. Try AI assistant: 'list all files' or 'show git status'"
+    echo "6. Customize machine-specific settings in ~/.config/zetup/local.zsh"
     echo ""
     echo "Backup location: $BACKUP_DIR"
 }
