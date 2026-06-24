@@ -1,0 +1,916 @@
+#!/usr/bin/env python3
+"""Lifecycle-driven tmux attention helper for Zetup AI CLI sessions."""
+
+from __future__ import annotations
+
+import copy
+import hashlib
+import json
+import os
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+from typing import Any
+
+
+MANAGED_HOOK_MARKER = "ZETUP_ATTENTION_HOOK=1"
+STATE_VERSION = 1
+
+DEFAULT_ICON = "●"
+DEFAULT_ATTENTION_STYLE = "fg=colour197,bold"
+DEFAULT_DONE_STYLE = "fg=colour46,bold"
+DEFAULT_ANIMATE = "on"
+
+STATUS_FRAGMENT_RE = re.compile(r"#\([^)]*zetup-attention\s+status[^)]*\)")
+SAFE_ID_RE = re.compile(r"[^A-Za-z0-9_.-]")
+
+CODEX_EVENTS = ["agent-turn-complete", "approval-requested"]
+CODEX_NOTIFICATION_CONDITION = "always"
+
+
+class HookConfigError(RuntimeError):
+    """Raised when an existing hook/config file cannot be safely merged."""
+
+
+def run_tmux(
+    args: list[str], socket_path: str | None = None
+) -> subprocess.CompletedProcess[str] | None:
+    cmd = ["tmux"]
+    if socket_path:
+        cmd.extend(["-S", socket_path])
+    cmd.extend(args)
+    try:
+        return subprocess.run(
+            cmd,
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except FileNotFoundError:
+        return None
+
+
+def tmux_stdout(args: list[str], socket_path: str | None = None) -> str | None:
+    result = run_tmux(args, socket_path=socket_path)
+    if result is None or result.returncode != 0:
+        return None
+    return result.stdout.rstrip("\n")
+
+
+def tmux_ok(args: list[str], socket_path: str | None = None) -> bool:
+    result = run_tmux(args, socket_path=socket_path)
+    return result is not None and result.returncode == 0
+
+
+def tmux_socket_from_env() -> str | None:
+    raw = os.environ.get("TMUX", "")
+    if not raw:
+        return None
+    socket = raw.split(",", 1)[0].strip()
+    return socket or None
+
+
+def tmux_context(target: str | None = None) -> dict[str, str] | None:
+    args = ["display-message", "-p"]
+    if target:
+        args.extend(["-t", target])
+    args.append("#{socket_path}\t#{window_id}\t#{pane_id}")
+    output = tmux_stdout(args)
+    if not output:
+        return None
+    parts = output.split("\t")
+    if len(parts) != 3 or not all(parts):
+        return None
+    return {"socket_path": parts[0], "window_id": parts[1], "pane_id": parts[2]}
+
+
+def pane_context(pane_id: str | None = None) -> dict[str, str] | None:
+    target = pane_id or os.environ.get("TMUX_PANE") or None
+    return tmux_context(target)
+
+
+def window_context(window_id: str | None = None) -> dict[str, str] | None:
+    args = ["display-message", "-p"]
+    if window_id:
+        args.extend(["-t", window_id])
+    args.append("#{socket_path}\t#{window_id}")
+    output = tmux_stdout(args)
+    if not output:
+        return None
+    parts = output.split("\t")
+    if len(parts) != 2 or not all(parts):
+        return None
+    return {"socket_path": parts[0], "window_id": parts[1]}
+
+
+def state_base_dir() -> Path:
+    override = os.environ.get("ZETUP_ATTENTION_STATE_DIR")
+    if override:
+        base = Path(override).expanduser()
+    else:
+        runtime = os.environ.get("XDG_RUNTIME_DIR") or os.environ.get("TMPDIR") or "/tmp"
+        base = Path(runtime) / f"zetup-attention-{os.getuid()}"
+    base.mkdir(mode=0o700, parents=True, exist_ok=True)
+    try:
+        base.chmod(0o700)
+    except OSError:
+        pass
+    return base
+
+
+def server_key(socket_path: str) -> str:
+    return hashlib.sha256(socket_path.encode("utf-8", errors="ignore")).hexdigest()[:24]
+
+
+def server_state_dir(socket_path: str) -> Path:
+    path = state_base_dir() / server_key(socket_path)
+    path.mkdir(mode=0o700, parents=True, exist_ok=True)
+    try:
+        path.chmod(0o700)
+    except OSError:
+        pass
+    return path
+
+
+def safe_id(value: str) -> str:
+    return SAFE_ID_RE.sub(lambda m: f"_{ord(m.group(0)):02x}", value)
+
+
+def state_path(socket_path: str, window_id: str, pane_id: str) -> Path:
+    return server_state_dir(socket_path) / f"{safe_id(window_id)}.{safe_id(pane_id)}.json"
+
+
+def normalize_reason(reason: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_.:-]+", "-", reason.strip()).strip("-") or "attention"
+
+
+def reason_priority(reason: str) -> int:
+    if reason in {"approval-needed", "input-needed"}:
+        return 30
+    if reason == "turn-complete":
+        return 20
+    return 10
+
+
+def read_state(path: Path) -> dict[str, Any] | None:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    if data.get("version") != STATE_VERSION:
+        return None
+    if not data.get("window_id") or not data.get("pane_id"):
+        return None
+    return data
+
+
+def write_state(path: Path, state: dict[str, Any]) -> None:
+    tmp = path.with_suffix(f".{os.getpid()}.tmp")
+    tmp.write_text(json.dumps(state, sort_keys=True) + "\n", encoding="utf-8")
+    tmp.replace(path)
+
+
+def iter_states(server_dir: Path) -> list[tuple[Path, dict[str, Any]]]:
+    states: list[tuple[Path, dict[str, Any]]] = []
+    for path in server_dir.glob("*.json"):
+        data = read_state(path)
+        if data is None:
+            continue
+        states.append((path, data))
+    return states
+
+
+def should_prune(server_dir: Path) -> bool:
+    stamp = server_dir / ".last_prune"
+    now = time.time()
+    try:
+        if now - stamp.stat().st_mtime < 10:
+            return False
+    except OSError:
+        pass
+    try:
+        stamp.write_text(str(int(now)), encoding="utf-8")
+    except OSError:
+        pass
+    return True
+
+
+def live_panes(socket_path: str) -> set[tuple[str, str]] | None:
+    output = tmux_stdout(
+        ["list-panes", "-a", "-F", "#{window_id}\t#{pane_id}"],
+        socket_path=socket_path,
+    )
+    if output is None:
+        return None
+    panes: set[tuple[str, str]] = set()
+    for line in output.splitlines():
+        parts = line.split("\t")
+        if len(parts) == 2:
+            panes.add((parts[0], parts[1]))
+    return panes
+
+
+def prune_stale_states(socket_path: str, server_dir: Path, force: bool = False) -> None:
+    if not force and not should_prune(server_dir):
+        return
+    panes = live_panes(socket_path)
+    if panes is None:
+        return
+    for path, state in iter_states(server_dir):
+        if (str(state.get("window_id")), str(state.get("pane_id"))) not in panes:
+            try:
+                path.unlink()
+            except OSError:
+                pass
+
+
+def attention_disabled() -> bool:
+    return os.environ.get("ZETUP_ATTENTION", "1") == "0"
+
+
+def mark(tool: str, reason: str, pane_id: str | None = None) -> int:
+    if attention_disabled():
+        return 0
+    ctx = pane_context(pane_id)
+    if not ctx:
+        return 0
+    normalized_reason = normalize_reason(reason)
+    state = {
+        "version": STATE_VERSION,
+        "tool": normalize_reason(tool),
+        "reason": normalized_reason,
+        "socket_path": ctx["socket_path"],
+        "window_id": ctx["window_id"],
+        "pane_id": ctx["pane_id"],
+        "updated_at": int(time.time()),
+    }
+    write_state(state_path(ctx["socket_path"], ctx["window_id"], ctx["pane_id"]), state)
+    tmux_ok(["refresh-client", "-S"])
+    return 0
+
+
+def clear_pane(pane_id: str | None = None) -> int:
+    ctx = pane_context(pane_id)
+    if ctx:
+        path = state_path(ctx["socket_path"], ctx["window_id"], ctx["pane_id"])
+        try:
+            path.unlink()
+        except OSError:
+            pass
+        tmux_ok(["refresh-client", "-S"])
+        return 0
+
+    socket_path = tmux_socket_from_env()
+    target_pane = pane_id or os.environ.get("TMUX_PANE")
+    if socket_path and target_pane:
+        server_dir = server_state_dir(socket_path)
+        for path, state in iter_states(server_dir):
+            if state.get("pane_id") == target_pane:
+                try:
+                    path.unlink()
+                except OSError:
+                    pass
+    return 0
+
+
+def clear_window(window_id: str | None) -> int:
+    ctx = window_context(window_id)
+    if not ctx:
+        return 0
+    server_dir = server_state_dir(ctx["socket_path"])
+    for path, state in iter_states(server_dir):
+        if state.get("window_id") == ctx["window_id"]:
+            try:
+                path.unlink()
+            except OSError:
+                pass
+    tmux_ok(["refresh-client", "-S"])
+    return 0
+
+
+def clear_current() -> int:
+    return clear_window(None)
+
+
+def clear_all() -> int:
+    socket_path = tmux_socket_from_env()
+    if not socket_path:
+        ctx = window_context(None)
+        socket_path = ctx["socket_path"] if ctx else None
+    if not socket_path:
+        return 0
+    server_dir = server_state_dir(socket_path)
+    for path in server_dir.glob("*.json"):
+        try:
+            path.unlink()
+        except OSError:
+            pass
+    prune_stale_states(socket_path, server_dir, force=True)
+    tmux_ok(["refresh-client", "-S"])
+    return 0
+
+
+def status_options(socket_path: str, window_id: str) -> dict[str, str]:
+    defaults = {
+        "icon": DEFAULT_ICON,
+        "style": DEFAULT_ATTENTION_STYLE,
+        "done_style": DEFAULT_DONE_STYLE,
+        "animate": DEFAULT_ANIMATE,
+    }
+    fmt = (
+        "#{@zetup_attention_icon}\t"
+        "#{@zetup_attention_style}\t"
+        "#{@zetup_attention_done_style}\t"
+        "#{@zetup_attention_animate}"
+    )
+    output = tmux_stdout(["display-message", "-p", "-t", window_id, fmt], socket_path=socket_path)
+    if not output:
+        return defaults
+    parts = output.split("\t")
+    while len(parts) < 4:
+        parts.append("")
+    return {
+        "icon": parts[0] or defaults["icon"],
+        "style": parts[1] or defaults["style"],
+        "done_style": parts[2] or defaults["done_style"],
+        "animate": parts[3] or defaults["animate"],
+    }
+
+
+def truthy(value: str) -> bool:
+    return value.strip().lower() not in {"0", "false", "off", "no", "none"}
+
+
+def render_status(socket_path: str, window_id: str) -> int:
+    if not socket_path or not window_id:
+        return 0
+    server_dir = server_state_dir(socket_path)
+    prune_stale_states(socket_path, server_dir)
+    states = [state for _, state in iter_states(server_dir) if state.get("window_id") == window_id]
+    if not states:
+        return 0
+    best = max(
+        states,
+        key=lambda item: (
+            reason_priority(str(item.get("reason", ""))),
+            int(item.get("updated_at", 0) or 0),
+        ),
+    )
+    opts = status_options(socket_path, window_id)
+    icon = opts["icon"]
+    if truthy(opts["animate"]) and int(time.time()) % 2:
+        sys.stdout.write(" " * max(1, len(icon) + 1))
+        return 0
+
+    style = opts["done_style"] if best.get("reason") == "turn-complete" else opts["style"]
+    sys.stdout.write(f"#[{style}]{icon}#[default] ")
+    return 0
+
+
+def helper_for_tmux_status() -> str:
+    installed = Path.home() / ".config" / "zetup" / "ai-helpers" / "zetup-attention"
+    if installed.exists():
+        return str(installed)
+    return str(Path(__file__).resolve())
+
+
+def status_fragment() -> str:
+    helper = shlex.quote(helper_for_tmux_status())
+    return f'#({helper} status "#{{socket_path}}" "#{{window_id}}")'
+
+
+def strip_status_fragment(value: str) -> str:
+    return STATUS_FRAGMENT_RE.sub("", value)
+
+
+def set_default_tmux_option(name: str, value: str) -> None:
+    current = tmux_stdout(["show-option", "-gqv", name])
+    if current in {None, ""}:
+        tmux_ok(["set-option", "-gq", name, value])
+
+
+def install_tmux_status() -> int:
+    if tmux_socket_from_env() is None and window_context(None) is None:
+        return 0
+
+    set_default_tmux_option("@zetup_attention_icon", DEFAULT_ICON)
+    set_default_tmux_option("@zetup_attention_style", DEFAULT_ATTENTION_STYLE)
+    set_default_tmux_option("@zetup_attention_done_style", DEFAULT_DONE_STYLE)
+    set_default_tmux_option("@zetup_attention_animate", DEFAULT_ANIMATE)
+    tmux_ok(["set-option", "-gq", "status-interval", "1"])
+
+    fragment = status_fragment()
+    for option in ("window-status-format", "window-status-current-format"):
+        current = tmux_stdout(["show-options", "-gwqv", option]) or ""
+        cleaned = strip_status_fragment(current)
+        desired = f"{fragment}{cleaned}"
+        if desired != current:
+            tmux_ok(["set-window-option", "-gq", option, desired])
+    return 0
+
+
+def uninstall_tmux_status() -> int:
+    if tmux_socket_from_env() is None and window_context(None) is None:
+        return 0
+    for option in ("window-status-format", "window-status-current-format"):
+        current = tmux_stdout(["show-options", "-gwqv", option]) or ""
+        cleaned = strip_status_fragment(current)
+        if cleaned != current:
+            tmux_ok(["set-window-option", "-gq", option, cleaned])
+    return 0
+
+
+def hook_command(action: str, tool: str | None = None, reason: str | None = None) -> str:
+    helper = '"$HOME/.config/zetup/ai-helpers/zetup-attention"'
+    if action == "mark":
+        return (
+            f'{MANAGED_HOOK_MARKER} {helper} mark {tool} {reason} '
+            '"${TMUX_PANE:-}"'
+        )
+    if action == "clear-pane":
+        return f'{MANAGED_HOOK_MARKER} {helper} clear-pane "${{TMUX_PANE:-}}"'
+    raise ValueError(f"unsupported hook action: {action}")
+
+
+def command_hook(command: str, timeout: int = 5) -> dict[str, Any]:
+    return {"type": "command", "command": command, "timeout": timeout}
+
+
+def hook_group(command: str, matcher: str | None = None) -> dict[str, Any]:
+    group: dict[str, Any] = {"hooks": [command_hook(command)]}
+    if matcher is not None:
+        group["matcher"] = matcher
+    return group
+
+
+def codex_hook_map() -> dict[str, list[dict[str, Any]]]:
+    clear = hook_command("clear-pane")
+    return {
+        "PreToolUse": [hook_group(clear, "*")],
+        "UserPromptSubmit": [hook_group(clear)],
+        "SessionStart": [hook_group(clear)],
+    }
+
+
+def claude_hook_map() -> dict[str, list[dict[str, Any]]]:
+    return {
+        "Notification": [hook_group(hook_command("mark", "claude", "input-needed"))],
+        "Stop": [hook_group(hook_command("mark", "claude", "turn-complete"))],
+        "SubagentStop": [hook_group(hook_command("mark", "claude", "turn-complete"))],
+        "PreToolUse": [hook_group(hook_command("clear-pane"), "*")],
+        "UserPromptSubmit": [hook_group(hook_command("clear-pane"))],
+        "SessionStart": [hook_group(hook_command("clear-pane"))],
+        "SessionEnd": [hook_group(hook_command("clear-pane"))],
+    }
+
+
+def load_json(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    try:
+        text = path.read_text(encoding="utf-8")
+        if not text.strip():
+            return {}
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise HookConfigError(f"{path} is not valid JSON: {exc}") from exc
+    if not isinstance(data, dict):
+        raise HookConfigError(f"{path} must contain a JSON object")
+    return data
+
+
+def backup_file(path: Path) -> Path | None:
+    if not path.exists():
+        return None
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
+    backup = path.with_name(f"{path.name}.bak-{timestamp}")
+    shutil.copy2(path, backup)
+    return backup
+
+
+def is_managed_hook(hook: Any) -> bool:
+    return (
+        isinstance(hook, dict)
+        and hook.get("type") == "command"
+        and MANAGED_HOOK_MARKER in str(hook.get("command", ""))
+    )
+
+
+def remove_managed_hooks(hooks: dict[str, Any]) -> dict[str, Any]:
+    cleaned: dict[str, Any] = {}
+    for event, groups in hooks.items():
+        if not isinstance(groups, list):
+            cleaned[event] = groups
+            continue
+
+        event_groups: list[Any] = []
+        for group in groups:
+            if not isinstance(group, dict) or not isinstance(group.get("hooks"), list):
+                event_groups.append(group)
+                continue
+
+            new_group = copy.deepcopy(group)
+            new_hooks = [hook for hook in new_group["hooks"] if not is_managed_hook(hook)]
+            if new_hooks:
+                new_group["hooks"] = new_hooks
+                event_groups.append(new_group)
+            elif not all(is_managed_hook(hook) for hook in group["hooks"]):
+                new_group["hooks"] = new_hooks
+                event_groups.append(new_group)
+
+        if event_groups:
+            cleaned[event] = event_groups
+    return cleaned
+
+
+def merge_hook_map(path: Path, hook_map: dict[str, list[dict[str, Any]]]) -> bool:
+    data = load_json(path)
+    before = copy.deepcopy(data)
+    hooks = data.setdefault("hooks", {})
+    if not isinstance(hooks, dict):
+        raise HookConfigError(f"{path}: top-level 'hooks' must be an object")
+
+    cleaned_hooks = remove_managed_hooks(hooks)
+    for event, groups in hook_map.items():
+        existing_groups = cleaned_hooks.setdefault(event, [])
+        if not isinstance(existing_groups, list):
+            raise HookConfigError(f"{path}: hooks.{event} must be an array")
+        existing_groups.extend(copy.deepcopy(groups))
+    data["hooks"] = cleaned_hooks
+
+    if data == before:
+        return False
+    path.parent.mkdir(parents=True, exist_ok=True)
+    backup_file(path)
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    return True
+
+
+def uninstall_hook_map(path: Path) -> bool:
+    if not path.exists():
+        return False
+    data = load_json(path)
+    before = copy.deepcopy(data)
+    hooks = data.get("hooks")
+    if isinstance(hooks, dict):
+        data["hooks"] = remove_managed_hooks(hooks)
+    if data == before:
+        return False
+    backup_file(path)
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    return True
+
+
+def load_toml_module() -> Any:
+    try:
+        import tomllib as toml
+    except ModuleNotFoundError:
+        try:
+            import tomli as toml
+        except ModuleNotFoundError as exc:
+            raise HookConfigError(
+                "TOML parsing requires Python 3.11+ or the 'tomli' package. "
+                "Status/mark commands still work, but install-hooks cannot edit "
+                "~/.codex/config.toml without TOML support."
+            ) from exc
+    return toml
+
+
+def load_toml(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    text = path.read_text(encoding="utf-8")
+    if not text.strip():
+        return {}
+    toml = load_toml_module()
+    try:
+        return toml.loads(text)
+    except toml.TOMLDecodeError as exc:
+        raise HookConfigError(f"{path} is not valid TOML: {exc}") from exc
+
+
+def toml_literal(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False)
+
+
+def section_bounds(lines: list[str], section: str | None) -> tuple[int, int] | None:
+    header_re = re.compile(r"^\s*\[([^\]]+)]\s*$")
+    if section is None:
+        end = len(lines)
+        for idx, line in enumerate(lines):
+            if header_re.match(line):
+                end = idx
+                break
+        return (0, end)
+
+    start: int | None = None
+    for idx, line in enumerate(lines):
+        match = header_re.match(line)
+        if not match:
+            continue
+        if match.group(1) == section:
+            start = idx
+            continue
+        if start is not None:
+            return (start + 1, idx)
+    if start is None:
+        return None
+    return (start + 1, len(lines))
+
+
+def set_toml_key(text: str, section: str | None, key: str, value: Any, present: bool = True) -> str:
+    lines = text.splitlines()
+    bounds = section_bounds(lines, section)
+    if bounds is None:
+        if not present:
+            return text
+        if lines and lines[-1].strip():
+            lines.append("")
+        lines.append(f"[{section}]")
+        lines.append(f"{key} = {toml_literal(value)}")
+        return "\n".join(lines) + "\n"
+
+    start, end = bounds
+    key_re = re.compile(rf"^\s*{re.escape(key)}\s*=")
+    found: int | None = None
+    for idx in range(start, end):
+        if key_re.match(lines[idx]):
+            found = idx
+            break
+
+    if present:
+        line = f"{key} = {toml_literal(value)}"
+        if found is None:
+            insert_at = start
+            lines.insert(insert_at, line)
+        else:
+            lines[found] = line
+    elif found is not None:
+        del lines[found]
+    return "\n".join(lines) + "\n"
+
+
+def codex_sidecar_path() -> Path:
+    return Path.home() / ".config" / "zetup" / "attention" / "codex-notify.json"
+
+
+def codex_wrapper_argv() -> list[str]:
+    return [str(Path.home() / ".config" / "zetup" / "ai-helpers" / "zetup-attention"), "codex-notify"]
+
+
+def is_zetup_codex_notify(value: Any) -> bool:
+    if not isinstance(value, list):
+        return False
+    parts = [str(item) for item in value]
+    return "codex-notify" in parts and any(part.endswith("zetup-attention") for part in parts)
+
+
+def write_codex_sidecar(config: dict[str, Any], *, overwrite: bool = False) -> None:
+    sidecar = codex_sidecar_path()
+    if sidecar.exists() and not overwrite:
+        return
+    tui = config.get("tui") if isinstance(config.get("tui"), dict) else {}
+    data = {
+        "version": 1,
+        "had_notify": "notify" in config,
+        "notify": config.get("notify"),
+        "had_tui_notifications": "notifications" in tui,
+        "tui_notifications": tui.get("notifications"),
+        "had_notification_condition": "notification_condition" in tui,
+        "notification_condition": tui.get("notification_condition"),
+    }
+    sidecar.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    try:
+        sidecar.parent.chmod(0o700)
+    except OSError:
+        pass
+    sidecar.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
+def merged_codex_events(existing: Any) -> list[str]:
+    if isinstance(existing, list):
+        values = [str(item) for item in existing]
+        for event in CODEX_EVENTS:
+            if event not in values:
+                values.append(event)
+        return values
+    return CODEX_EVENTS.copy()
+
+
+def install_codex_config(path: Path) -> bool:
+    config = load_toml(path)
+    before_text = path.read_text(encoding="utf-8") if path.exists() else ""
+    codex_notify_is_zetup = is_zetup_codex_notify(config.get("notify"))
+    write_codex_sidecar(config, overwrite=not codex_notify_is_zetup)
+
+    tui = config.get("tui") if isinstance(config.get("tui"), dict) else {}
+    text = before_text
+    text = set_toml_key(text, None, "notify", codex_wrapper_argv())
+    text = set_toml_key(text, "tui", "notifications", merged_codex_events(tui.get("notifications")))
+    text = set_toml_key(text, "tui", "notification_condition", CODEX_NOTIFICATION_CONDITION)
+
+    if text == before_text:
+        return False
+    path.parent.mkdir(parents=True, exist_ok=True)
+    backup_file(path)
+    path.write_text(text, encoding="utf-8")
+    return True
+
+
+def restore_codex_config(path: Path) -> bool:
+    sidecar = codex_sidecar_path()
+    if not sidecar.exists() or not path.exists():
+        return False
+    config = load_toml(path)
+    if not is_zetup_codex_notify(config.get("notify")):
+        return False
+    try:
+        data = json.loads(sidecar.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+
+    before_text = path.read_text(encoding="utf-8")
+    text = before_text
+    text = set_toml_key(text, None, "notify", data.get("notify"), bool(data.get("had_notify")))
+    text = set_toml_key(
+        text,
+        "tui",
+        "notifications",
+        data.get("tui_notifications"),
+        bool(data.get("had_tui_notifications")),
+    )
+    text = set_toml_key(
+        text,
+        "tui",
+        "notification_condition",
+        data.get("notification_condition"),
+        bool(data.get("had_notification_condition")),
+    )
+
+    if text != before_text:
+        backup_file(path)
+        path.write_text(text, encoding="utf-8")
+    try:
+        sidecar.unlink()
+    except OSError:
+        pass
+    return text != before_text
+
+
+def chain_codex_notify(payload: str | None) -> None:
+    sidecar = codex_sidecar_path()
+    if not sidecar.exists():
+        return
+    try:
+        data = json.loads(sidecar.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return
+    notify = data.get("notify")
+    if not data.get("had_notify") or not isinstance(notify, list) or is_zetup_codex_notify(notify):
+        return
+    argv = [str(item) for item in notify]
+    if payload is not None:
+        argv.append(payload)
+    try:
+        subprocess.run(argv, check=False)
+    except OSError:
+        pass
+
+
+def codex_notify(argv: list[str]) -> int:
+    payload = argv[0] if argv else None
+    if payload is None and not sys.stdin.isatty():
+        payload = sys.stdin.read()
+    event_type = ""
+    if payload:
+        try:
+            data = json.loads(payload)
+            if isinstance(data, dict):
+                event_type = str(data.get("type") or data.get("notification_type") or "")
+        except json.JSONDecodeError:
+            event_type = ""
+
+    if event_type == "approval-requested":
+        mark("codex", "approval-needed", os.environ.get("TMUX_PANE"))
+    elif event_type == "agent-turn-complete":
+        mark("codex", "turn-complete", os.environ.get("TMUX_PANE"))
+
+    chain_codex_notify(payload)
+    return 0
+
+
+def install_hooks() -> int:
+    home = Path.home()
+    changed: list[str] = []
+
+    if install_codex_config(home / ".codex" / "config.toml"):
+        changed.append(str(home / ".codex" / "config.toml"))
+    if merge_hook_map(home / ".codex" / "hooks.json", codex_hook_map()):
+        changed.append(str(home / ".codex" / "hooks.json"))
+    if merge_hook_map(home / ".claude" / "settings.json", claude_hook_map()):
+        changed.append(str(home / ".claude" / "settings.json"))
+
+    if changed:
+        print("Installed Zetup attention integration:")
+        for path in changed:
+            print(f"  {path}")
+    else:
+        print("Zetup attention integration already installed.")
+    return 0
+
+
+def uninstall_hooks() -> int:
+    home = Path.home()
+    changed: list[str] = []
+
+    if restore_codex_config(home / ".codex" / "config.toml"):
+        changed.append(str(home / ".codex" / "config.toml"))
+    for path in (home / ".codex" / "hooks.json", home / ".claude" / "settings.json"):
+        if uninstall_hook_map(path):
+            changed.append(str(path))
+
+    if changed:
+        print("Removed Zetup attention integration:")
+        for path in changed:
+            print(f"  {path}")
+    else:
+        print("No Zetup attention integration was installed.")
+    return 0
+
+
+def legacy_watch(_tool: str, _pane_id: str | None) -> int:
+    return 0
+
+
+def usage() -> int:
+    print(
+        "Usage: zetup-attention <command> [args]\n"
+        "\n"
+        "Commands:\n"
+        "  mark <tool> <reason> [pane_id]\n"
+        "  clear-current\n"
+        "  clear-pane [pane_id]\n"
+        "  clear-window <window_id>\n"
+        "  clear-all\n"
+        "  status <socket_path> <window_id>\n"
+        "  install-tmux-status\n"
+        "  uninstall-tmux-status\n"
+        "  codex-notify [payload-json]\n"
+        "  watch <tool> <pane_id>  # legacy no-op\n"
+        "  install-hooks\n"
+        "  uninstall-hooks",
+        file=sys.stderr,
+    )
+    return 2
+
+
+def main(argv: list[str]) -> int:
+    if not argv:
+        return usage()
+    command = argv[0]
+    try:
+        if command == "mark":
+            if len(argv) < 3:
+                return usage()
+            return mark(argv[1], argv[2], argv[3] if len(argv) > 3 else None)
+        if command == "clear-current":
+            return clear_current()
+        if command == "clear-pane":
+            return clear_pane(argv[1] if len(argv) > 1 else None)
+        if command == "clear-window":
+            if len(argv) != 2:
+                return usage()
+            return clear_window(argv[1])
+        if command == "clear-all":
+            return clear_all()
+        if command == "status":
+            if len(argv) != 3:
+                return usage()
+            return render_status(argv[1], argv[2])
+        if command == "install-tmux-status":
+            return install_tmux_status()
+        if command == "uninstall-tmux-status":
+            return uninstall_tmux_status()
+        if command == "codex-notify":
+            return codex_notify(argv[1:])
+        if command == "watch":
+            return legacy_watch(argv[1] if len(argv) > 1 else "", argv[2] if len(argv) > 2 else None)
+        if command == "install-hooks":
+            return install_hooks()
+        if command == "uninstall-hooks":
+            return uninstall_hooks()
+        return usage()
+    except HookConfigError as exc:
+        print(f"zetup-attention: {exc}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

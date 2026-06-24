@@ -32,6 +32,17 @@ echo
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "🗑️  Removing Zetup configurations..."
+
+    if [[ -f "$HOME/.config/zetup/ai-helpers/zetup-attention" ]]; then
+        if [[ -n "${TMUX:-}" ]]; then
+            python3 "$HOME/.config/zetup/ai-helpers/zetup-attention" uninstall-tmux-status >/dev/null 2>&1 || true
+        fi
+        if python3 "$HOME/.config/zetup/ai-helpers/zetup-attention" uninstall-hooks; then
+            echo "   Removed Zetup attention hooks"
+        else
+            echo "   ⚠️  Could not remove Zetup attention hooks"
+        fi
+    fi
     
     # Remove Zetup configs
     if [[ -f "$HOME/.zshrc" ]] && grep -q "\.config/zetup/shared\.zsh" "$HOME/.zshrc" 2>/dev/null; then

@@ -7,6 +7,7 @@ A comprehensive terminal customization system for macOS that provides a modular,
 - ✅ **Automated Installation**: One-command setup for all dependencies
 - ⚙️ **Zsh Configuration**: Powered by Antigen with oh-my-zsh plugins
 - 🖥️ **Tmux Configuration**: TPM-managed plugins with sensible defaults
+- 🔔 **AI Attention Signals**: Tmux window markers for Codex/Claude panes that need input
 - 📦 **Dependency Management**: Automatic installation of required tools
 - 🔁 **Reusable**: Works on any macOS system without modification
 - 🧑‍💻 **User-Agnostic**: No hardcoded paths or usernames
@@ -67,6 +68,7 @@ zetup/
 │   └── tmux.conf           # Tmux configuration
 ├── shared/
 │   ├── shared.zsh          # Main Zsh configuration (sourced by local ~/.zshrc)
+│   ├── attention.zsh       # Manual tmux attention commands for AI CLIs
 │   ├── aliases.zsh         # Centralized aliases
 │   ├── ai-assistant.zsh    # AI terminal assistant
 │   └── ai-helpers/         # AI helper scripts
@@ -150,6 +152,24 @@ Zetup creates a **local** `~/.zshrc` file that sources the shared configuration.
 
 ## Advanced Usage
 
+### AI Attention Signals
+
+When Codex or Claude needs input inside tmux, Zetup shows a colored blinking `●` icon in the tmux window status. The marker stays visible when you switch to that window. It clears from lifecycle events when the tool resumes work or the session ends, and `prefix + A` clears it manually.
+
+For unsupported tools, Zetup no longer watches terminal output because that caused false positives. Mark or clear attention manually:
+
+```bash
+attn mark some-ai-cli input-needed
+attn complete some-ai-cli
+attn clear
+```
+
+The installer adds Codex and Claude lifecycle hooks so approval/input and turn-complete events can mark the window reliably. Codex also uses its official notify event stream; if you already had a Codex notifier configured, Zetup chains it after marking tmux state. If Codex asks you to review new hooks, open `/hooks` and trust the Zetup attention hooks.
+
+Environment switches:
+- `ZETUP_ATTENTION=0` disables attention marking.
+- `ZETUP_ATTENTION_INSTALL_HOOKS=0 ./install.sh` skips hook installation.
+
 ### Tmux Copy/Paste Guide
 
 The tmux configuration is designed to work seamlessly with iTerm's native text selection:
@@ -231,6 +251,7 @@ The tmux configuration is designed to work seamlessly with iTerm's native text s
 **Configuration**
 - `prefix + r` - Reload tmux config
 - `prefix + ?` - Show all key bindings
+- `prefix + A` - Clear the current AI attention marker
 
 **Layout Management**
 - `prefix + Space` - Next layout

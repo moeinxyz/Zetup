@@ -197,11 +197,40 @@ link_configs() {
     # Link shared aliases
     ln -sf "$ZETUP_DIR/shared/aliases.zsh" "$HOME/.config/zetup/aliases.zsh"
 
+    # Link tmux attention integration
+    ln -sf "$ZETUP_DIR/shared/attention.zsh" "$HOME/.config/zetup/attention.zsh"
+
     # Link AI assistant
     ln -sf "$ZETUP_DIR/shared/ai-assistant.zsh" "$HOME/.config/zetup/ai-assistant.zsh"
 
     # Link AI helper scripts
     ln -sf "$ZETUP_DIR/shared/ai-helpers" "$HOME/.config/zetup/ai-helpers"
+}
+
+install_attention_hooks() {
+    echo "🔔 Installing tmux attention integration..."
+
+    if [[ "${ZETUP_ATTENTION_INSTALL_HOOKS:-1}" == "0" ]]; then
+        echo "   Skipped hooks because ZETUP_ATTENTION_INSTALL_HOOKS=0"
+        return 0
+    fi
+
+    local helper="$HOME/.config/zetup/ai-helpers/zetup-attention"
+    if [[ ! -f "$helper" ]]; then
+        echo "   ⚠️  Attention helper not found, skipping integration"
+        return 0
+    fi
+
+    if python3 "$helper" install-hooks; then
+        echo "   ✅ Tmux attention hooks/config installed"
+    else
+        echo "   ⚠️  Could not install tmux attention hooks/config"
+        echo "   You can retry later with: zetup-attention install-hooks"
+    fi
+
+    if [[ -n "${TMUX:-}" ]]; then
+        python3 "$helper" install-tmux-status >/dev/null 2>&1 || true
+    fi
 }
 
 set_zsh_as_default() {
@@ -271,6 +300,7 @@ main() {
     install_antigen
     install_tpm
     link_configs
+    install_attention_hooks
     set_zsh_as_default
     install_tmux_plugins
     verify_tmux_setup
@@ -287,6 +317,7 @@ main() {
     echo "4. Test copy/paste: Select text with mouse, then Cmd+V to paste"
     echo "5. Try AI assistant: 'list all files' or 'show git status'"
     echo "6. Customize machine-specific settings in ~/.config/zetup/local.zsh"
+    echo "7. In tmux, Codex/Claude windows needing input show a blinking colored ● status icon"
     echo ""
     echo "Backup location: $BACKUP_DIR"
 }

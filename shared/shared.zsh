@@ -59,6 +59,13 @@ setopt COMPLETE_IN_WORD
 # Load shared aliases
 [[ -f "$HOME/.config/zetup/aliases.zsh" ]] && source "$HOME/.config/zetup/aliases.zsh"
 
+# Load tmux attention helpers for AI CLIs
+if [[ -f "$ZETUP_DIR/shared/attention.zsh" ]]; then
+    source "$ZETUP_DIR/shared/attention.zsh"
+elif [[ -f "$HOME/.config/zetup/attention.zsh" ]]; then
+    source "$HOME/.config/zetup/attention.zsh"
+fi
+
 # Load AI assistant
 [[ -f "$HOME/.config/zetup/ai-assistant.zsh" ]] && source "$HOME/.config/zetup/ai-assistant.zsh"
 
